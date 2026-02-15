@@ -106,7 +106,7 @@ The refactored codebase was validated through A/B testing against the original i
 
 * **Logic:** Python 3.10+, PyTorch (MPS optimized)
 * **Creative Source:** p5.js (Custom procedural loops)
-* **Research Partner:** Gemini 1.5 Pro (Deep Learning analysis)
+* **Research Partner:** Gemini 2.5 Flash 
 * **Analysis:** NumPy, Scikit-Learn (K-Means Initialization)
 * **Testing:** pytest (5 tests covering model, config, and checkpoint validation)
 
@@ -119,4 +119,4 @@ The refactoring process taught me that **professional code quality and research 
 ---
 
 Built by **Niklaz Hallberg** – [niklaz.works](https://niklaz.works)  
-February 2026. Theoretical foundation inspired by studies at MIT and IBM. Developed in collaboration with Gemini 1.5 Pro.
+February 2026. Theoretical foundation inspired by studies at MIT and IBM. 
