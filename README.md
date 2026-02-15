@@ -2,7 +2,7 @@
 
 This project was born at the intersection of Digital Design and Neural Architectures. After spending hundreds of hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional programs, I set out to move from theory to implementation.
 
-**The goal:** To build a model from scratch that learns the mathematical "soul" of my p5.js (Creative Coding) animations—eventually allowing the AI to dream up its own algorithmic motion.
+**The goal:** To build a model from scratch that learns the mathematical "soul" of my p5.js (Creative Coding) animations, eventually allowing the AI to dream up its own algorithmic motion.
 
 ## 🧠 The Concept: Choosing the Right "Brain"
 
