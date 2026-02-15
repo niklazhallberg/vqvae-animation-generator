@@ -1,15 +1,12 @@
 # --- START OF FILE train_vqvae.py (KORRIGERAD FÖR model.quantizer) ---
 
-import os
 from pathlib import Path
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import time
 from tqdm import tqdm
-import numpy as np
 
 # Importera från dina andra moduler
 # Viktigt: Detta antar att VQVAE-klassen finns i models/vqvae_model.py
@@ -79,6 +76,8 @@ def train_vqvae(
         scheduler_min_lr: Minsta tillåtna lärfrekvens.
         num_vis_examples: Antal exempelbilder att visa vid visualisering.
     """
+    # --- Initiering (Optimizer, Scheduler, Variabler) ---
+
     checkpoint_dir = Path(checkpoint_dir)
     log_dir = Path(log_dir)
     output_dir = Path(output_dir)
@@ -121,7 +120,7 @@ def train_vqvae(
     if loaded_checkpoint_path:
         print(f"Laddar checkpoint: {loaded_checkpoint_path}")
         try:
-            checkpoint_data = torch.load(loaded_checkpoint_path, map_location=device)
+            checkpoint_data = torch.load(loaded_checkpoint_path, map_location=device, weights_only=True)
             model.load_state_dict(checkpoint_data['model_state_dict'])
             try:
                 optimizer.load_state_dict(checkpoint_data['optimizer_state_dict'])
@@ -142,6 +141,8 @@ def train_vqvae(
             start_epoch = 0
             best_val_loss = float('inf')
             loaded_checkpoint_path = None
+
+    # --- K-Means Initiering ---
 
     if not loaded_checkpoint_path or force_kmeans_init:
         # <<< Använd model.quantizer istället för model.get_quantizer() >>>

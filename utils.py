@@ -8,8 +8,6 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 import pandas as pd
-from torchvision.utils import save_image
-from tqdm import tqdm
 
 
 # =====================================================
@@ -270,21 +268,5 @@ def plot_training_curve(
     except Exception as e:
         print(f"❌ Plot error: {e}")
 
-
-# =====================================================
-# 🧪 (Placeholder)
-# =====================================================
-def calculate_loop_difference(tensor_sequence: torch.Tensor) -> float:
-    """Beräkna skillnad mellan första och sista frame i en sekvens.
-
-    Placeholder-funktion för framtida loop-analys.
-
-    Args:
-        tensor_sequence: Sekvens av frames som tensor.
-
-    Returns:
-        Skillnadsvärde (för närvarande alltid 0.0).
-    """
-    return 0.0
 
 # --- END OF FILE utils.py ---
