@@ -44,7 +44,7 @@ After extensive research into VQ-VAE literature, I implemented a robust **Anti-C
 
 ## 🌀 Latent Space Exploration
 
-The ultimate test of a VQ-VAE isn't reconstruction quality—it's whether the latent space is *meaningful*. To prove this, I built a **Latent Walk** system that generates smooth morphs between any two animation frames by interpolating in the continuous latent space *before* quantization.
+The ultimate test of a VQ-VAE isn't reconstruction quality, it's whether the latent space is *meaningful*. To prove this, I built a **Latent Walk** system that generates smooth morphs between any two animation frames by interpolating in the continuous latent space *before* quantization.
 
 The key insight: instead of interpolating between discrete codebook indices (which would produce jarring jumps), I interpolate between the raw encoder outputs (z_e), then let the quantizer snap each intermediate point to its nearest codes. The result is a smooth, frame-by-frame morph that passes through geometrically plausible hybrid forms.
 
