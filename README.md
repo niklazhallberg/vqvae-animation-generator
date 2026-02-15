@@ -134,8 +134,8 @@ The refactored codebase was validated through A/B testing against the original i
 
 ## 🛠 Technical Stack
 
-* **Logic:** Python 3.10+, PyTorch (MPS optimized)
-* **Creative Source:** p5.js (Custom procedural loops)
+* **Logic:** Python 3.10+, PyTorch (MacBook Pro optimized)
+* **Creative Source:** p5.js (Custom-made loops)
 * **Research Partner:** Gemini 2.5 Flash 
 * **Analysis:** NumPy, Scikit-Learn (K-Means Initialization)
 * **Testing:** pytest (5 tests covering model, config, and checkpoint validation)
