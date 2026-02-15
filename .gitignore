@@ -1,0 +1,28 @@
+# Data & Outputs
+data/
+outputs/
+*.pth
+*.pt
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+training_log.csv
+
+# Jupyter
+.ipynb_checkpoints/
