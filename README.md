@@ -1,4 +1,4 @@
-# Spatial VQ-VAE: Bridging Creative Code & Deep Learning
+# VQ-VAE: Creative Code & Deep Learning
 
 This project was born at the intersection of Digital Design and Neural Architectures. After spending hundreds of hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional programs, I set out to move from theory to implementation.
 
@@ -149,4 +149,3 @@ The refactoring process taught me that **professional code quality and research 
 ---
 
 Built by **Niklaz Hallberg** – [niklaz.works](https://niklaz.works)  
-February 2026. Theoretical foundation inspired by studies at MIT and IBM. 
