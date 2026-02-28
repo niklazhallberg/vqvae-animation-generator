@@ -71,7 +71,7 @@ python latent_walk.py \
 
 ### Results
 
-Demo videos show smooth morphing between different animation families—for example, circular shapes gradually transforming into square geometries, producing plausible hybrid forms throughout the transition. No artifacts, no jumps, no mode collapse to a single output. The model doesn't just memorize frames; it understands the *structure* of the geometry well enough to invent intermediate forms that never existed in the training data.
+The [latent walk demo](Images/morph_anim1_to_anim5.mp4) shows smooth morphing between different animation families—for example, circular shapes gradually transforming into square geometries, producing plausible hybrid forms throughout the transition. No artifacts, no jumps, no mode collapse to a single output. The model doesn't just memorize frames; it understands the *structure* of the geometry well enough to invent intermediate forms that never existed in the training data.
 
 ## ⚙️ Engineering Highlights
 
