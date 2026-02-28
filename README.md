@@ -31,8 +31,6 @@ After extensive research into VQ-VAE literature, I implemented a robust **Anti-C
 | Codebook Usage | < 5% (Collapse) | 85-92% (Full Utilization) |
 | Learning Stability | Volatile | Stable & Recoverable |
 
-**Why 128 codes?** For a dataset of 1,800 frames from 10 animations, the codebook size needs to balance expressiveness against trainability. Too few codes (e.g., 32) and the model can't represent the geometric diversity across all 10 animation families — reconstructions blur together. Too many (e.g., 512+) and the codebook becomes sparse: most vectors never get enough training signal, usage collapses, and you're back to the same failure mode. 128 sits in the sweet spot — enough "visual words" to capture distinct shapes, lines, and motion patterns, while still small enough that every code gets meaningful updates during local MPS training.
-
 ### The Result
 
 ![Codebook Usage at Epoch 135](Images/codebook_usage_epoch_135.png)
@@ -43,6 +41,8 @@ After extensive research into VQ-VAE literature, I implemented a robust **Anti-C
 - **Validation Loss:** 0.0486
 - **Perplexity:** 92/128 codes active (72% utilization)
 - **Reconstruction Quality:** Sharp, geometrically accurate
+
+The choice of 128 codes was deliberate. For a dataset of 1,800 frames from 10 animations, the codebook size needs to balance expressiveness against trainability. Too few codes (e.g., 32) and the model can't represent the geometric diversity across all 10 animation families — reconstructions blur together. Too many (e.g., 512+) and the codebook becomes sparse: most vectors never get enough training signal, usage collapses, and you're back to the same failure mode. 128 sits in the sweet spot — enough "visual words" to capture distinct shapes, lines, and motion patterns, while still small enough that every code gets meaningful updates during local MPS training.
 
 ## 🌀 Latent Space Exploration
 
