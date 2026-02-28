@@ -10,17 +10,17 @@ This project was born at the intersection of Creative Coding and Neural Architec
 
 ## Table of Contents
 
-- [The Concept: Choosing the Right "Brain"](#-the-concept-choosing-the-right-brain)
-- [Overcoming Codebook Collapse](#️-overcoming-codebook-collapse)
-- [Latent Space Exploration](#-latent-space-exploration)
-- [Engineering Highlights](#️-engineering-highlights)
-- [Project Structure](#-project-structure-the-neural-ecosystem)
-- [Quick Start](#-quick-start-usage)
-- [Validation](#-validation)
-- [Technical Stack](#-technical-stack)
-- [What I Learned](#-what-i-learned)
+- [The Concept: Choosing the Right "Brain"](#the-concept-choosing-the-right-brain)
+- [Overcoming Codebook Collapse](#overcoming-codebook-collapse)
+- [Latent Space Exploration](#latent-space-exploration)
+- [Engineering Highlights](#engineering-highlights)
+- [Project Structure](#project-structure-the-neural-ecosystem)
+- [Quick Start](#quick-start-usage)
+- [Validation](#validation)
+- [Technical Stack](#technical-stack)
+- [What I Learned](#what-i-learned)
 
-## 🧠 The Concept: Choosing the Right "Brain"
+## The Concept: Choosing the Right "Brain"
 
 To capture the logic of a p5.js loop, I had to choose the right architecture.
 
@@ -28,7 +28,7 @@ To capture the logic of a p5.js loop, I had to choose the right architecture.
 
 2. **VQ-VAE (Vector Quantized VAE):** Instead of blurry shades, the model must choose from a specific "Codebook" of high-definition tiles. This discretization makes the model make sharp, precise decisions, preserving the crisp, digital nature of the original code.
 
-## 🛡️ Overcoming Codebook Collapse
+## Overcoming Codebook Collapse
 
 The greatest challenge of this project was **Codebook Collapse**. Due to a relatively limited dataset (10 custom animations), the model initially "gave up"—mapping every complex input to the same few vectors, resulting in vague, static outputs.
 
@@ -70,7 +70,7 @@ After extensive research into VQ-VAE literature, I implemented a robust **Anti-C
 
 The choice of 128 codes was deliberate. For a dataset of 1,800 frames from 10 animations, the codebook size needs to balance expressiveness against trainability. Too few codes (e.g., 32) and the model can't represent the geometric diversity across all 10 animation families — reconstructions blur together. Too many (e.g., 512+) and the codebook becomes sparse: most vectors never get enough training signal, usage collapses, and you're back to the same failure mode. 128 sits in the sweet spot — enough "visual words" to capture distinct shapes, lines, and motion patterns, while still small enough that every code gets meaningful updates during local MPS training.
 
-## 🌀 Latent Space Exploration
+## Latent Space Exploration
 
 The ultimate test of a VQ-VAE isn't reconstruction quality, it's whether the latent space is *meaningful*. To prove this, I built a **Latent Walk** system that generates smooth morphs between any two animation frames by interpolating in the continuous latent space *before* quantization.
 
@@ -99,7 +99,7 @@ python latent_walk.py \
 
 The [latent walk demo](Images/morph_anim1_to_anim5.mp4) shows smooth morphing between different animation families—for example, circular shapes gradually transforming into square geometries, producing plausible hybrid forms throughout the transition. No artifacts, no jumps, no mode collapse to a single output. The model doesn't just memorize frames; it understands the *structure* of the geometry well enough to invent intermediate forms that never existed in the training data.
 
-## ⚙️ Engineering Highlights
+## Engineering Highlights
 
 ### 1. Perplexity Tracking (Measuring "Creative Health")
 Beyond just tracking Loss, I monitor **Codebook Perplexity** ($2^{H(p)}$). It measures how many of the 128 available visual codes are actually being used. This is mathematical proof that the model is utilizing its full capacity.
@@ -114,7 +114,7 @@ I developed a **Beta-Warmup** schedule that gradually scales the commitment loss
 ### 4. Local Hardware Optimization (Apple Silicon)
 The model is fully optimized for local training on MacBook using **MPS (Metal Performance Shaders)** via `torch.device("mps")`.
 
-## 📂 Project Structure: The Neural Ecosystem
+## Project Structure: The Neural Ecosystem
 
 To keep the research reproducible and scalable, the project is divided into specialized modules:
 
@@ -128,7 +128,7 @@ To keep the research reproducible and scalable, the project is divided into spec
 * **`visualizations.py`**: Reserved for future advanced visualizations (t-SNE, codebook clustering).
 * **`generate.py`**: Proof-of-concept decoder that generates images from random codebook indices. Coherent animation generation would require a trained Prior model (e.g., Transformer) as a future extension.
 
-## 🚀 Quick Start (Usage)
+## Quick Start (Usage)
 
 This repository is **Plug & Play**. The dataset of p5.js animations is already included in the `data/` folder.
 
@@ -149,7 +149,7 @@ python start_training.py
 * **Visuals:** Check `outputs/images/` to see real-time reconstructions.
 * **Metrics:** View `outputs/logs/training_curve.png` for a full breakdown of Loss and Perplexity.
 
-## ✅ Validation
+## Validation
 
 The refactored codebase was validated through A/B testing against the original implementation:
 
@@ -160,7 +160,7 @@ The refactored codebase was validated through A/B testing against the original i
 
 **Result:** Functionally identical performance (0.8% difference within statistical noise), with 32% faster convergence due to early stopping. The refactoring—adding type hints, security best practices (`weights_only=True`), dataclasses, and test suite—introduced **zero functional regressions** while improving code quality from 6.5/10 to 7.5/10.
 
-## 🛠 Technical Stack
+## Technical Stack
 
 * **Logic:** Python 3.10+, PyTorch (MacBook Pro optimized)
 * **Creative Source:** p5.js (Custom-made loops)
@@ -168,7 +168,7 @@ The refactored codebase was validated through A/B testing against the original i
 * **Analysis:** NumPy, Scikit-Learn (K-Means Initialization)
 * **Testing:** pytest (5 tests covering model, config, and checkpoint validation)
 
-## 💡 What I Learned
+## What I Learned
 
 This project progressed through three distinct phases, each building on the last:
 
