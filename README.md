@@ -33,7 +33,7 @@ After extensive research into VQ-VAE literature, I implemented a robust **Anti-C
 
 ### The Result
 
-![Codebook Usage at Epoch 199](Images/codebook_usage_epoch_199.png)
+![Codebook Usage at Epoch 135](Images/codebook_usage_epoch_135.png)
 
 **Full codebook utilization achieved!** The histogram shows nearly all 128 vectors actively used with balanced distribution, enabling the model to capture the geometric diversity of all 10 animations.
 
