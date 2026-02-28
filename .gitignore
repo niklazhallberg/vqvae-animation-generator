@@ -1,5 +1,4 @@
 # Data & Outputs
-data/
 outputs/
 *.pth
 *.pt
