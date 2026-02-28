@@ -1,8 +1,24 @@
 # VQ-VAE: Creative Code & Deep Learning
 
+## TL;DR
+
+A VQ-VAE built from scratch in PyTorch that learns custom p5.js looping animations. Trained locally on Apple Silicon (MPS) with 1,800 frames across 10 animations. Achieved 92% codebook utilization through EMA updates, beta-warmup scheduling, and dead code recovery. The model generates smooth latent morphs between animation families — producing new frames that never existed in the training data.
+
 This project was born at the intersection of Creative Coding and Neural Architectures. After spending hundreds of hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional program on Youtube, I set out to move from theory to implementation.
 
 **The goal:** To build an AI model from scratch that learns my minimalistic, looping p5.js animations (can be found in folder: data on Github repo) and eventually allowing the AI to dream up its own algorithmic motion.
+
+## Table of Contents
+
+- [The Concept: Choosing the Right "Brain"](#-the-concept-choosing-the-right-brain)
+- [Overcoming Codebook Collapse](#️-overcoming-codebook-collapse)
+- [Latent Space Exploration](#-latent-space-exploration)
+- [Engineering Highlights](#️-engineering-highlights)
+- [Project Structure](#-project-structure-the-neural-ecosystem)
+- [Quick Start](#-quick-start-usage)
+- [Validation](#-validation)
+- [Technical Stack](#-technical-stack)
+- [What I Learned](#-what-i-learned)
 
 ## 🧠 The Concept: Choosing the Right "Brain"
 
