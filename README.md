@@ -98,7 +98,7 @@ To keep the research reproducible and scalable, the project is divided into spec
 * **`utils.py`**: The eyes. Handles checkpointing, real-time image previews, and mathematical plotting.
 * **`latent_walk.py`**: The proof. Generates smooth morphs between frames via continuous latent space interpolation.
 * **`visualizations.py`**: Reserved for future advanced visualizations (t-SNE, codebook clustering).
-* **`generate.py`**: The creative outlet. Used to generate new visual samples from the learned latent space.
+* **`generate.py`**: Proof-of-concept decoder that generates images from random codebook indices. Coherent animation generation would require a trained Prior model (e.g., Transformer) as a future extension.
 
 ## 🚀 Quick Start (Usage)
 
@@ -142,9 +142,19 @@ The refactored codebase was validated through A/B testing against the original i
 
 ## 💡 What I Learned
 
-This project was a masterclass in **Architectural Constraint**. I learned that building an AI isn't just about "more data"—it's about building the right mathematical fences. By analyzing scientific papers and implementing recovery logic, I created a system that truly "understands" the geometry of my creative code.
+This project progressed through three distinct phases, each building on the last:
 
-The refactoring process taught me that **professional code quality and research innovation aren't mutually exclusive** - you can have cutting-edge ML implementations that also follow industry best practices for maintainability, security, and testing.
+**Phase 1: Data Collection** — I generated 1,800 frames from 10 custom p5.js animations and built a data pipeline to ingest, normalize, and serve them as grayscale tensors to PyTorch. This phase established the foundation: a clean, reproducible dataset of algorithmic motion.
+
+**Phase 2: Model Development & Training** — The core engineering challenge. I confronted codebook collapse head-on—initial training produced entirely black outputs with <1% codebook utilization. Solving it required implementing EMA codebook updates, a beta-warmup schedule that ramps commitment loss from 0.05 to 0.25 over 30 epochs, and custom dead code recovery logic that monitors and resuscitates unused vectors. The result: 85-92% codebook utilization and sharp, geometrically accurate reconstructions.
+
+**Phase 3: Latent Space Exploration** — The proof that the model learned *structure*, not just memorization. I built a latent walk system that interpolates between frames in the continuous pre-quantization space (z_e), producing smooth morphs through geometrically plausible intermediate forms that never existed in the training data. Smooth walks with no artifacts or dead zones confirm the codebook utilization is real and the encoder/decoder learned complementary representations.
+
+The refactoring process taught me that **professional code quality and research innovation aren't mutually exclusive** — you can have cutting-edge ML implementations that also follow industry best practices for maintainability, security, and testing.
+
+### A Note on Scope and Hardware
+
+This project was deliberately dimensioned for local training on a MacBook Pro via MPS (Metal Performance Shaders). The dataset (1,800 frames), model size (128 codebook vectors, 64-dim embeddings), and training duration (~200 epochs) were all chosen to fit comfortably within that constraint. The same principles—EMA updates, beta-warmup, dead code recovery, continuous-space interpolation—scale directly to GPU clusters with larger datasets and codebooks. Only the compute budget changes.
 
 ---
 
