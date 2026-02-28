@@ -1,6 +1,6 @@
 # VQ-VAE: Creative Code & Deep Learning
 
-## TL;DR
+## Overview
 
 A VQ-VAE built from scratch in PyTorch that learns custom p5.js looping animations. Trained locally on Apple Silicon (MPS) with 1,800 frames across 10 animations. Achieved 92% codebook utilization through EMA updates, beta-warmup scheduling, and dead code recovery. The model generates smooth latent morphs between animation families — producing new frames that never existed in the training data.
 
