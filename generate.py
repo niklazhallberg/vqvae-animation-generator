@@ -13,7 +13,7 @@ import argparse # För att kunna ange modellfil från kommandoraden
 from torchvision.utils import save_image
 
 from models.vqvae_model import VQVAE # Importera Spatial VQ-VAE
-from utils import plot_training_curve # Behåll plot-funktion
+from config import Config
 
 # ======================================================
 # ⚙️ Argument Parser (Valfritt men användbart)
@@ -29,8 +29,6 @@ def parse_args() -> argparse.Namespace:
                         help='Antal bilder att generera (från slumpmässiga koder)')
     parser.add_argument('--latent_h', type=int, default=8, help='Höjd på den latenta gridden')
     parser.add_argument('--latent_w', type=int, default=8, help='Bredd på den latenta gridden')
-    parser.add_argument('--log_path', type=str, default="outputs/logs/training_log.csv",
-                        help='Sökväg till träningsloggfilen för att plotta kurvan')
     return parser.parse_args()
 
 
@@ -38,56 +36,48 @@ def parse_args() -> argparse.Namespace:
 # 🚀 HUVUDFUNKTION
 # ======================================================
 def main() -> None:
-    """Ladda modell, generera bilder och plotta träningskurva."""
+    """Ladda modell och generera bilder."""
     args = parse_args()
 
     # ======================================================
-    # 🧠 LADDA MODELL (Försöker läsa parametrar från checkpoint)
+    # 🧠 LADDA MODELL
     # ======================================================
-    # Defaultvärden om de inte hittas i checkpoint
-    default_embedding_dim = 64
-    default_num_embeddings = 128
-
-    embedding_dim = default_embedding_dim
-    num_embeddings = default_num_embeddings
-
     if not Path(args.model_path).exists():
         print(f"❌ Modellfilen hittades inte: {args.model_path}")
         sys.exit(1)
 
+    device = torch.device(
+        'mps' if torch.backends.mps.is_available()
+        else 'cuda' if torch.cuda.is_available()
+        else 'cpu'
+    )
+
     print(f"Laddar modell från: {args.model_path}")
     try:
-        checkpoint = torch.load(args.model_path, map_location="cpu", weights_only=True)
-        if isinstance(checkpoint, dict):
-            # Läs parametrar om de finns
-            if 'embedding_dim' in checkpoint and checkpoint['embedding_dim'] != 'N/A':
-                embedding_dim = checkpoint['embedding_dim']
-            if 'num_embeddings' in checkpoint and checkpoint['num_embeddings'] != 'N/A':
-                num_embeddings = checkpoint['num_embeddings']
-            print(f"Använder parametrar: embedding_dim={embedding_dim}, num_embeddings={num_embeddings}")
+        checkpoint = torch.load(args.model_path, map_location=device, weights_only=True)
+        if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
             model_state_dict = checkpoint['model_state_dict']
+            print(f"Checkpoint från epoch: {checkpoint.get('epoch', 'unknown')}")
         else:
-            print("⚠️ Checkpoint innehåller endast state_dict. Använder default model params.")
             model_state_dict = checkpoint
 
     except Exception as e:
         print(f"❌ Kunde inte ladda modellen från {args.model_path}. Fel: {e}")
         sys.exit(1)
 
-    # Initiera modellen
+    # Initiera modellen (samma parametrar som latent_walk.py och start_training.py)
     model = VQVAE(
-        embedding_dim=embedding_dim,
-        num_embeddings=num_embeddings
-    )
-    # Ladda vikterna
+        embedding_dim=Config.EMBEDDING_DIM,
+        num_embeddings=Config.NUM_EMBEDDINGS,
+        commitment_cost=Config.BETA_START,
+        ema_decay=Config.EMA_DECAY,
+        ema_epsilon=Config.EMA_EPSILON,
+        ema_recovery_threshold=Config.RECOVERY_THRESHOLD,
+        ema_recovery_probability=Config.RECOVERY_PROB,
+        ema_recovery_noise_scale=Config.RECOVERY_NOISE_SCALE
+    ).to(device)
     model.load_state_dict(model_state_dict)
     model.eval()
-    device = torch.device(
-        'mps' if torch.backends.mps.is_available()
-        else 'cuda' if torch.cuda.is_available()
-        else 'cpu'
-    )
-    model.to(device)
     print(f"✅ Modellen laddad till {device}.")
 
     # ======================================================
@@ -97,7 +87,7 @@ def main() -> None:
 
     # Skapa en batch av slumpmässiga spatiala indices
     # Shape: [num_samples, latent_h, latent_w]
-    random_indices = torch.randint(0, num_embeddings,
+    random_indices = torch.randint(0, Config.NUM_EMBEDDINGS,
                                    (args.num_samples, args.latent_h, args.latent_w),
                                    device=device)
 
@@ -114,12 +104,6 @@ def main() -> None:
     print("För att generera en *sammanhängande animation* (och ev. loopande)")
     print("behövs ett andra steg: träna en Prior-modell (t.ex. Transformer)")
     print("på sekvenser av koder från VQ-VAE:n.")
-
-    # ======================================================
-    # 📈 PLOTTAR LOSS-KURVA – Efter träning
-    # ======================================================
-    # Använd plot-funktionen från utils
-    plot_training_curve(log_path=args.log_path, save_path='outputs/logs/training_curve.png')
 
 
 if __name__ == '__main__':
