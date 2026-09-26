@@ -27,8 +27,13 @@ This is a PyTorch VQ-VAE project for generating looping animations. Swedish comm
 - For config changes: Check all files import correctly
 - For utility functions: Test with edge cases
 
+## Repository Guardrails
+- No changes to model architecture, training behavior, EMA updates, dead-code recovery, hyperparameters, the supplied dataset (`data/`), or committed visual evidence (`Images/`) without explicit maintainer approval
+- Documentation, dependency metadata, tests, `.gitignore`, licensing, and reproducibility instructions may be updated when supported by verified repository behavior
+- Do not regenerate, replace, or delete committed visual assets unless explicitly requested
+- Historical metrics that were not newly reproduced must be labeled as reported results, not current benchmarks
+
 ## Repository Etiquette
-- README.md already exists - DO NOT regenerate or modify it
 - Commit messages in English for GitHub audience
 - Keep Swedish in code but English in git/docs
 

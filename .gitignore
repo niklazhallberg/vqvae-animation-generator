@@ -2,6 +2,12 @@
 outputs/
 *.pth
 *.pt
+*.ckpt
+*.safetensors
+
+# Local environment files
+.env
+.env.*
 
 # Python
 __pycache__/
