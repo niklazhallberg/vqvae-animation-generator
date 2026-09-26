@@ -250,7 +250,7 @@ This project was deliberately dimensioned for local training on a MacBook Pro vi
 ## 📄 License
 
 - **Source code** is released under the [MIT License](LICENSE).
-- **Creative assets are not MIT-licensed.** The original p5.js animation frames in `data/`, the visual material in `Images/`, and any included example media are © Niklaz Hallberg, all rights reserved. See [ASSETS_LICENSE.md](ASSETS_LICENSE.md).
+- **Creative assets are not MIT-licensed.** The original p5.js animation frames in `data/`, the visual material in `Images/`, and any included example media are © Niklaz Hallberg, all rights reserved. They may not be reused, redistributed, or used for model training without written permission. See [ASSETS_LICENSE.md](ASSETS_LICENSE.md).
 
 ---
 
