@@ -9,7 +9,7 @@ A VQ-VAE built from scratch in PyTorch that learns custom p5.js looping animatio
 
 This project was born at the intersection of Creative Coding and Neural Architectures. After spending hours and hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional program on Youtube, I set out to challenge myself and move from theory to implementation.
 
-**The goal:** to build an AI model from scratch that learns my minimalistic, looping p5.js animations (included in the `data/` folder), as a first step toward letting an AI dream up its own algorithmic motion. That last step, autonomous generation of new animations, is not part of this repository (see [Limitations](#-limitations-and-next-steps)).
+**The goal:** to build an AI model from scratch that learns my minimalistic, looping p5.js animations (included in the `data/` folder), as a first step toward letting an AI dream up its own algorithmic motion. That last step, autonomous generation of new animations, is not part of this repository (see [Limitations](#-limitations-and-next-steps)).<br><br>
 <!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series). -->
 
 <picture>
@@ -17,7 +17,7 @@ This project was born at the intersection of Creative Coding and Neural Architec
   <img alt="Nested circles: Artificial Intelligence ⊃ Machine Learning ⊃ Deep Learning ⊃ Generative AI. This project sits on the border between Deep Learning and Generative AI." src="Images/ai-landscape-light.png" width="100%">
 </picture>
 
-**Where this project sits:** on the seam between deep learning and generative AI. A VQ-VAE is a deep neural network from the same family of ideas that later generative image and video systems build on. Here it learns a compact visual vocabulary from my work, redraws every frame from it, and morphs between animations, stopping one step short of inventing new ones.
+<br><br>**Where this project sits:** on the seam between deep learning and generative AI. A VQ-VAE is a deep neural network from the same family of ideas that later generative image and video systems build on. Here it learns a compact visual vocabulary from my work, redraws every frame from it, and morphs between animations, stopping one step short of inventing new ones.
 
 **Look at first:** [the morph](#morphing-between-animations) → [before / after training](#the-hard-part-getting-the-model-to-use-its-vocabulary) → [what I built vs what I used](#what-i-built-vs-what-i-used)
 
