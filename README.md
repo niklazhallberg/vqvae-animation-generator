@@ -1,165 +1,240 @@
-# VQ-VAE: Creative Code & Deep Learning
+# Latent Loops
+### A VQ-VAE I built in PyTorch to learn my p5.js animations and morph between them
 
-**This is an advanced creative machine learning experiment: train a VQ-VAE on original p5.js animation frames, then explore the learned latent space through reconstructed loops and interpolated morphs.**
+<p align="center">
+  <img src="Images/hero-original-recon-morph.gif" width="100%"
+       alt="Left: one of my p5.js loops at the model's 64×64 input size. Middle: the trained model redrawing it. Right: the model morphing that loop into a different one and back.">
+</p>
 
-## Overview
+<sub>Left: loop 2 at the model's 64×64 input size. Middle: the trained model redrawing it from its code grid. Right: the model morphing loop 2 into loop 7 and back. Best checkpoint (epoch 121), upscaled 6× with nearest-neighbour, slight contrast lift.</sub>
 
-A VQ-VAE built from scratch in PyTorch that learns custom p5.js looping animations. Trained locally on Apple Silicon (MPS) with 1,800 frames across 10 animations. Overcame codebook collapse through EMA updates, beta-warmup scheduling, and dead code recovery, reaching a validation perplexity of ≈ 85–92 of 128 codes in the documented runs. The model generates smooth latent morphs between animation families — producing new frames that never existed in the training data.
+I make generative motion in p5.js. For this project I wrote a neural network that learns my visual language, and I trained it from zero on 1,800 frames from ten of my loops, on a MacBook. It describes every frame as an 8×8 grid of choices from a vocabulary of 128 visual words it invents itself, then redraws the frame from that description. Blend two descriptions and you get a morph instead of a crossfade: the in-between frames rebuild themselves through shapes I never drew.
 
-This project was born at the intersection of Creative Coding and Neural Architectures. After spending hours and hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional program on Youtube, I set out to challenge myself and move from theory to implementation.
+The hard part was getting the model to use its vocabulary at all. Early versions collapsed onto a single code and could only paint black. Fixing that is the core of the engineering story below.
 
-**The goal:** to build an AI model from scratch that learns my minimalistic, looping p5.js animations (included in the `data/` folder), as a first step toward letting an AI dream up its own algorithmic motion. That last step, autonomous generation of new animations, is not part of this repository (see [Limitations](#️-limitations)).
+**Look at first:** [the morph](#-morphing-between-animations) → [before / after training](#-the-hard-part-getting-the-model-to-use-its-vocabulary) → [what I built vs what I used](#-what-i-built-vs-what-i-used)
 
-## Table of Contents
+**Role:** solo, from concept to the ten animations, data pipeline, model, training, morph tool and diagrams<br>
+**Stack:** p5.js · Python · PyTorch · scikit-learn · trained locally on Apple Silicon (MPS)<br>
+**Scope:** learns and morphs between existing animations. It doesn't generate new ones yet ([why](#-limitations-and-next-steps)).
 
-- [The Concept: Choosing the Right "Brain"](#-the-concept-choosing-the-right-brain)
-- [Overcoming Codebook Collapse](#️-overcoming-codebook-collapse)
-- [Latent Space Exploration](#-latent-space-exploration)
-- [Results](#-results)
-- [Engineering Highlights](#️-engineering-highlights)
-- [Project Structure](#-project-structure-the-neural-ecosystem)
-- [Reproduce the Documented Run](#-reproduce-the-documented-run)
-- [Validation](#-validation)
-- [Limitations](#️-limitations)
-- [Technical Stack](#-technical-stack)
-- [What I Learned](#-what-i-learned)
-- [License](#-license)
+## 🎨 The idea
 
-## 🧠 The Concept: Choosing the Right "Brain"
+These are the ten loops the model learned: layered hairline strokes forming knots, rings and ribbons, white on black.
 
-To capture the logic of a p5.js loop, I had to choose the right architecture.
+<p align="center">
+  <img src="Images/source-loops.gif" width="100%" alt="A 5×2 grid of the ten original p5.js loops, each playing in full.">
+</p>
 
-1. **VAE (Variational Autoencoder):** VAEs learn smooth, continuous representations. While great for organic shapes, they tend to produce blurry results when faced with the sharp lines and precise geometry of a p5.js script.
+<sub>All ten source loops (1024×1024 originals, shown downscaled). Each 180-frame loop plays in full, sped up.</sub>
+
+The model never sees pixels the way a crossfade does. It sees each frame as 64 cells, and each cell is labelled with one **code** (a visual word) from a learned **codebook** (the vocabulary). To morph, I blend the model's internal descriptions of two frames and let it redraw every step. The difference from a plain opacity crossfade between the same two frames is easy to see:
+
+<p align="center">
+  <img src="Images/crossfade-vs-morph.gif" width="70%" alt="Left: a plain opacity crossfade between two frames, showing a double exposure. Right: the model morph between the same frames, where the shape rebuilds itself.">
+</p>
+
+<sub>Same start and end frame (loop 2 frame 112 → loop 7 frame 91). Left: pixel crossfade, a double exposure. Right: model morph, where the shape itself changes.</sub>
+
+## 🧠 Why a VQ-VAE (and not a plain VAE)
+
+Both are **autoencoders**: networks that compress an image into a short description and then redraw the image from that description alone.
+
+1. **VAE (variational autoencoder).** A VAE describes each frame with continuous numbers. That makes blending easy, but with standard settings VAEs tend to average between plausible outputs, and on images that average looks like soft, smeared edges. My loops are built from thin overlapping strokes, so I went with the variant that has to commit. *(This rationale comes from the literature. I didn't train a VAE baseline here.)*
 
    <picture>
      <source media="(prefers-color-scheme: dark)" srcset="Images/vae-dark.png">
      <img alt="VAE: encoder → continuous latent space → decoder, producing a blurry output frame" src="Images/vae-light.png" width="100%">
    </picture>
 
-2. **VQ-VAE (Vector Quantized VAE):** Instead of blurry shades, the model must choose from a specific "Codebook" of learned tiles. This discretization pushes the model toward sharp, precise decisions that suit the crisp, digital nature of the original code.
+2. **VQ-VAE (vector-quantised VAE).** A VQ-VAE adds one constraint: every cell of the 8×8 description grid must snap to its nearest entry in a **codebook** of 128 learned vectors. Think of them as visual words, not pixel stamps. Each code is 64 numbers the decoder has learned to paint, and neighbouring cells blend into each other. Committing to codes instead of averaging tends to keep edges crisper. It also makes the model's internal state something you can see and count, which mattered a lot when training went wrong.
 
    <picture>
      <source media="(prefers-color-scheme: dark)" srcset="Images/vqvae-dark.png">
      <img alt="VQ-VAE: encoder → codebook → tokens → decoder, producing a crisp output frame" src="Images/vqvae-light.png" width="100%">
    </picture>
 
-## 🛡️ Overcoming Codebook Collapse
+The model works at 64×64 grayscale so it can train on a laptop. That size already softens my 1024 px hairlines into thin grey bands, which is why reconstructions look softer than the originals even when the shapes are right.
 
-The greatest challenge of this project was **Codebook Collapse**. Due to a relatively limited dataset (10 custom animations), the model initially "gave up", mapping every input to the same few vectors and producing vague, static outputs.
+## 🔧 The hard part: getting the model to use its vocabulary
 
-### The Problem
-Early training runs, before the fixes below, showed severe collapse (reported from those runs; logs not committed):
-- Only 1 out of 128 vectors used → entirely black outputs
-- Codebook perplexity ≈ 1 (effectively a single code)
+The biggest problem was **codebook collapse**: the model stopped using its vocabulary. In early runs every cell of every frame mapped to the same single code, so the decoder could only paint black. Perplexity, a measure of how many codes are effectively in use, sat at ≈ 1 of 128. These early runs happened before the fixes below; their logs aren't committed.
 
-### The Solution
-After extensive research into VQ-VAE literature, I implemented an anti-collapse setup: EMA codebook updates, K-Means codebook initialization, a beta warm-up schedule, and dead-code recovery (details under [Engineering Highlights](#️-engineering-highlights)).
+<!-- TODO(Niklaz): confirm the root cause of the early collapse from your notes on those runs. One candidate visible in the code: the codebook starts uniform in ±1/128 (models/vqvae_model.py), far from the encoder's output scale, so one code is nearest to everything. Replace the sentence below once confirmed. -->
+*Root cause: to be confirmed from the notes on those early runs.*
 
-| | Collapsed VQ-VAE (early runs) | VQ-VAE with EMA + warm-up + recovery (documented runs) |
+Four fixes, all standard in the VQ-VAE literature, got the model using its vocabulary:
+
+- **Smoothed codebook updates (EMA).** Each code drifts slowly toward the average of the encoder outputs it's chosen for, instead of being pushed by gradients.
+- **Codebook seeded from real data (K-Means).** The vocabulary starts as cluster centres of actual encoder outputs, so every code begins near something it can describe.
+- **Eased-in commitment (β warm-up).** The pull of the encoder toward its chosen codes starts gentle and tightens over the first 30 epochs.
+- **Recycled dead codes.** Codes that fall out of use are reset next to a real encoder output or a popular code, so they can compete again.
+
+| | Collapsed VQ-VAE (early runs) | With the four fixes (documented runs) |
 |---|---|---|
-| Reconstructions | Black / static | Close reconstructions of the source shapes |
-| Codebook perplexity | ≈ 1 of 128 | ≈ 85–92 of 128 (reported, see [Results](#-results)) |
+| Reconstructions | Black | Close reconstructions of the source shapes |
+| Codebook perplexity | ≈ 1 of 128 | 85–87 (refactored run) and 92 (original run) |
 | Training behaviour | Collapses early | Recovers dead codes; converges |
 
-### The Result
+The same fixed validation batch before and after training. An **epoch** is one full pass over all training frames.
 
-![Codebook Usage at Epoch 135](Images/codebook_usage_epoch_135.png)
-
-*Codebook usage on the validation set at epoch 135 (refactored run).* Nearly every one of the 128 vectors is used, so the codebook no longer collapses onto a few codes. Usage is uneven: the most-used codes appear tens of times more often than the rarest ones.
-
-### Visual Progress
-
-The same fixed validation batch at the start and end of training:
-
-**Epoch 0:** the decoder outputs a uniform grey texture. No structure has been learned yet.
+**Epoch 0:** before any learning, the decoder outputs the same grey, checkerboard-like grid for every frame. This is a typical artefact of untrained transposed convolutions.
 
 ![Reconstruction at Epoch 0](Images/reconstruction_epoch_000.png)
 
-**Epoch 135:** the outlines and shapes of all eight validation frames are reconstructed closely. Filled regions show some grain compared with the originals.
+**Epoch 135:** the outlines and shapes of all eight validation frames come back closely. Filled regions show some grain compared with the originals.
 
 ![Reconstruction at Epoch 135](Images/reconstruction_epoch_135.png)
 
-The choice of 128 codes was deliberate. For a dataset of 1,800 frames from 10 animations, the codebook size needs to balance expressiveness against trainability. Too few codes (e.g., 32) and the model can't represent the geometric diversity across all 10 animation families, so reconstructions blur together. Too many (e.g., 512+) and the codebook becomes sparse: most vectors never get enough training signal, usage collapses, and you're back to the same failure mode. 128 was the size that worked here. It gives enough "visual words" to capture distinct shapes and lines while staying small enough that each code gets regular updates during local MPS training.
+The whole progression as motion, from the original 200-epoch run (the pre-refactor baseline):
 
-## 🌀 Latent Space Exploration
+<p align="center">
+  <img src="Images/training-progress.gif" width="100%" alt="Training progress over 200 epochs: the top row shows original frames, the bottom row the model's reconstructions going from grey noise to recognisable shapes.">
+</p>
 
-Reconstruction quality shows that the model can compress and restore frames. It says little about how the latent space is organised. To look at that, I built a **Latent Walk** system that morphs between any two animation frames by interpolating in the continuous latent space *before* quantization.
+<sub>Original 200-epoch run, every second epoch from 0 to 198. Top: original frames. Bottom: reconstructions.</sub>
 
-The key idea: instead of interpolating between discrete codebook indices, which would produce jarring jumps, I interpolate between the raw encoder outputs (z_e) and let the quantizer snap each intermediate point to its nearest codes. The result is a frame-by-frame morph that passes through plausible hybrid forms.
+![Codebook usage at epoch 135](Images/codebook-usage-epoch-135.png)
 
-### What this suggests
+<sub>Codebook usage on the validation set at epoch 135 (refactored run). **How to read it:** one bar per code. A broad, uneven field of bars means the vocabulary is in use, while collapse would be one tall spike and 127 empty slots. All 128 codes appear here; the busiest is used about 87× as often as the rarest.</sub>
 
-Smooth latent walks are qualitative evidence that the representation is well structured. They are not proof of semantic understanding or of generalisation beyond this dataset.
+## 🌀 Morphing between animations
 
-- **Structured latent space:** in the walks I ran, nearby points decode to visually similar images.
-- **Usable codebook coverage:** the walks did not hit large dead regions that decode to blank frames. This is consistent with the codebook-usage histogram above.
-- **Encoder/decoder compatibility:** the decoder produces coherent images for interpolated latents, not only for encodings of training frames.
+Reconstruction quality shows that the model can compress and restore frames. It says little about how its internal space is organised. To look at that, I built a **latent walk** tool that morphs between any two frames.
 
-### Usage
+The trick is *where* the blend happens. Code numbers are just labels: averaging code #12 and code #87 is as meaningless as averaging the page numbers of two words in a dictionary. So I blend the encoder's continuous, pre-snap descriptions of the two frames (z_e) and let the quantiser snap each blended cell to its nearest code. As the blend moves, individual cells switch codes at different moments, sometimes through codes that belong to neither frame. That's why the shape rebuilds itself instead of crossfading.
 
-Requires a trained checkpoint at `outputs/checkpoints/vqvae_best.pth` (see [Reproduce](#-reproduce-the-documented-run)). Frames are numbered from `0001` to `0180` per animation:
+In the hero morph above, the three-lobed outline of loop 2 contracts toward a ring before opening into the rounded square of loop 7. The model decodes every in-between frame, and none of them is in the training data. These are blends between two real frames, not freely generated animation (see [Limitations](#-limitations-and-next-steps)).
 
-```bash
-python latent_walk.py \
-  --frame_a data/frames_animation1/frames_animation1_frame_0001.png \
-  --frame_b data/frames_animation5/frames_animation5_frame_0090.png \
-  --steps 120 --fps 30 \
-  --output outputs/morph_anim1_to_anim5.mp4 \
-  --save_frames
-```
+The repo also includes an earlier [latent walk demo](Images/morph_anim1_to_anim5.mp4) from loop 1 to loop 5: 120 frames at 64×64, 30 fps.
+<!-- TODO(Niklaz): describe what morph_anim1_to_anim5.mp4 actually shows (the audit read it as a faint three-lobed outline opening into a ring), and which run/checkpoint produced it. Neither best checkpoint in outputs/ (refactored epoch 121, original epoch 191) reproduces it exactly when re-rendered through the same libx264 export (pixel correlation ≈ 0.64), so it likely comes from an earlier checkpoint. -->
+*Description and source checkpoint of this clip: to be confirmed.*
 
-### Results
+What the walks suggest, qualitatively and not as proof of semantic understanding or of generalisation beyond this dataset:
 
-The committed [latent walk demo](Images/morph_anim1_to_anim5.mp4) (120 frames at 64×64, 30 fps) morphs between two animation families. In it, circular shapes gradually turn into square geometries through intermediate forms that are not in the training data. These in-between frames come from interpolation between two real frames, not from free generation (see [Limitations](#️-limitations)).
+- **Structured space:** in the walks I ran, nearby points decode to visually similar images.
+- **Usable vocabulary:** the walks didn't hit large dead regions that decode to blank frames, which is consistent with the codebook chart above.
+- **Encoder and decoder fit together:** the decoder produces coherent images for blended descriptions, not only for encodings of training frames.
 
-## 📊 Results
+## 📊 Results at a glance
 
 | | |
 |---|---|
-| **Dataset** | 1,800 frames: 10 original p5.js loops × 180 frames. Source PNGs are 1024×1024 RGBA, resized to **64×64 grayscale** model inputs. 90/10 train/validation split, seed 42 |
-| **Model** | Encoder downsamples 64×64 → 8×8 latent grid; codebook of 128 × 64-dim vectors |
-| **Training environment** | MacBook Pro, Apple Silicon (MPS) |
-| **Reported run** | Refactored code, early stop after epoch 135 (136 epochs): **validation loss 0.0490, validation perplexity ≈ 85** |
-| **Visual evidence** | Reconstructions at epoch 0 and 135, codebook usage at epoch 135, latent-walk morph, all in [`Images/`](Images/) |
+| **Dataset** | 1,800 frames: 10 original p5.js loops × 180 frames. Source PNGs are 1024×1024 RGBA, resized to **64×64 grayscale**. 90/10 train/validation split (1,620 / 180 frames), seed 42 |
+| **Model** | 485,121 parameters: 476,929 in the encoder and decoder (trained with Adam) + 8,192 in the codebook (128 codes × 64 numbers, updated by EMA). Each frame becomes an 8×8 grid of codes |
+| **Documented run** (refactored code) | Early stopping triggered at epoch 136 (137 epochs). **Best checkpoint: epoch 121, validation loss 0.0490, validation perplexity ≈ 87.** At the stop, epoch 136: 0.0492 and ≈ 85 |
+| **Training environment** | MacBook Pro, Apple Silicon (MPS), roughly 20 s per epoch (≈ 45 min for this run, estimated) |
+| **Visual evidence** | Reconstructions at epoch 0 and 135, codebook usage at epoch 135, training progression, morphs: all in [`Images/`](Images/) |
 
-These metrics are **reported from the documented Apple Silicon training run**. They were not re-measured for this README, and the training logs are not committed (`outputs/` is git-ignored).
+<sub>All metrics are **reported from the documented Apple Silicon training runs** and weren't re-measured for this README. The training logs aren't committed (`outputs/` is git-ignored), so the numbers can't be re-derived from this repository without retraining. The morph and hero GIFs use the best checkpoint (epoch 121); the epoch-135 images show the last saved visualisation before the stop.</sub>
 
-**How to read the metrics:**
-- **Validation loss** is binary cross-entropy reconstruction loss plus the beta-weighted commitment loss, averaged over validation batches.
-- **Perplexity** is exp(entropy) of code assignments, computed per validation batch and then averaged. It is an *effective* number of codes in use, not a count of distinct active codes. A perplexity of ≈ 85 means assignments are about as spread out as uniform use of 85 codes.
+## 🧰 What I built vs what I used
 
-## ⚙️ Engineering Highlights
+| I built | I used (libraries and tools) |
+|---|---|
+| The ten p5.js animations and the 1,800-frame dataset | **PyTorch:** conv layers, Adam optimiser, autograd, MPS backend |
+| Data pipeline: loading, resizing and grayscale conversion of the frames | **torchvision / Pillow:** image loading and transforms |
+| Vector quantiser: nearest-code search, EMA codebook updates, straight-through gradient, dead-code recovery, perplexity tracking | **scikit-learn:** the K-Means algorithm used to seed the codebook |
+| Training loop: β warm-up, LR scheduling, early stopping, checkpoints, visualisations | **matplotlib, pandas:** plots and log reading |
+| Latent walk tool (z_e interpolation → MP4) | **imageio + ffmpeg:** video export |
+| The refactor check: retraining and comparing against the original run | **pytest** |
+| Diagrams and visual documentation | |
 
-### 1. Perplexity Tracking (Measuring "Creative Health")
-Beyond tracking loss, I monitor **codebook perplexity**, exp(H(p)) over code assignments. It estimates how many of the 128 visual codes are effectively in use, and is the main early-warning signal for codebook collapse.
+"From scratch" here means: no pretrained weights and no VQ library. The model is assembled from standard PyTorch layers.
 
-### 2. Beta-Warmup (The Commitment Ramp)
-A **beta warm-up** schedule gradually scales the commitment loss weight ($\beta$) from $0.05$ to $0.25$ over the first 30 epochs. Keeping the commitment pressure low early on gave the encoder room to spread out before being pulled toward the codebook, which reduced early collapse in my runs.
+**Tools & AI assistance:** Gemini 2.5 Flash was my sparring partner throughout the project, for research and for testing ideas. Claude Code came in only afterwards, to tidy the project: checking that the code is well structured, refactoring the backend and keeping the documentation in order. The model, its training and the animations are my own work.
 
-### 3. EMA Updates & Dead Code Recovery
-* **EMA:** Instead of gradient updates, the codebook is updated with an Exponential Moving Average of assigned encoder outputs, which gives a smoother evolution of the visual "words".
-* **Recovery:** A custom `_recover_dead_codes` routine monitors code usage. If a code becomes "dead weight", it is re-initialized either from a random encoder output in the current batch or from a popular code plus noise.
+Code comments, docstrings and console logs are in Swedish, my working language, by choice. The documentation is in English.
 
-### 4. Local Hardware (Apple Silicon)
-Training runs locally on a MacBook via **MPS (Metal Performance Shaders)**. The device is selected automatically in the order MPS → CUDA → CPU.
+## 🚧 Limitations and next steps
 
-## 📂 Project Structure: The Neural Ecosystem
+- **Reconstruction and interpolation, not generation of new animations.** No temporal prior (e.g. a Transformer over code sequences) is trained, so the model can't invent coherent new animations over time. It reconstructs frames and creates interpolation-based morphs between frames. `generate.py` decodes *random* code grids, which yields single images without temporal coherence.
+- **Frame model, not a video model.** Every frame is encoded independently as a 64×64 grayscale image. Motion is only implicit in the frame order.
+- **Small, curated dataset.** 1,800 frames from 10 animations by one author, with a random frame-level train/validation split. Validation frames therefore come from the same loops as training frames, so the validation loss measures reconstruction of held-out frames of *known* animations, not generalisation to new ones.
+- **No pretrained weights** are included. Reproducing the results requires training locally.
+- **Reproducibility is approximate.** Seeds are fixed, but MPS/GPU kernels aren't bit-for-bit deterministic. Results may vary across runs, hardware and PyTorch versions.
+- **Training logs from the documented runs aren't committed.** The reported metrics can't be re-derived from this repository without retraining.
+- **Known rough edges:** the training and validation loops catch any exception per batch and `continue` (`train_vqvae.py`), which could hide real errors. `codebook_loss_weight` is accepted but ignored, because the codebook is updated by EMA and the loss is always reconstruction + β × commitment. `plot_training_curve()` in `utils.py` calls `sys.exit(1)`, with a "training aborted" message, if the last five validation losses vary by more than 0.02 standard deviation.
 
-To keep the research reproducible, the project is divided into specialized modules:
+**Possible next steps:** train a prior over code grids (e.g. a small Transformer) so the model can compose new loops rather than only blend existing ones; train at a higher resolution to keep more of the hairline detail.
 
-* **`config.py`**: The central brain for hyperparameters. Adjusting everything from learning rates to codebook size happens here.
-* **`models/vqvae_model.py`**: Contains the core architecture (Encoder, Spatial Vector Quantizer with EMA, and Decoder).
-* **`train_vqvae.py`**: The engine. Contains the training loop, Beta-warmup schedule, and stability logic.
-* **`start_training.py`**: The ignition. The entry point that initializes data loaders and starts the process. It takes no command-line arguments; running it starts training immediately.
-* **`dataset_loader.py`**: The bridge between p5.js and PyTorch. Handles ingestion, resizing and grayscale normalization.
-* **`utils.py`**: The eyes. Handles checkpoint lookup, reconstruction previews, codebook-usage plots, and the training-curve plot.
-* **`latent_walk.py`**: The explorer. Generates smooth morphs between two frames via continuous latent-space interpolation.
-* **`visualizations.py`**: Reserved for future advanced visualizations (t-SNE, codebook clustering).
-* **`generate.py`**: Proof-of-concept decoder that decodes *random* codebook indices into single images. Coherent animation generation would require a trained prior model (e.g., a Transformer) as a future extension.
+## 💡 What I learned
 
-## 🚀 Reproduce the Documented Run
+The project went through three phases. First, data: turning ten p5.js loops into a clean 1,800-frame grayscale dataset. Second, the model: hitting codebook collapse (black outputs, perplexity ≈ 1) and fixing it with EMA updates, K-Means seeding, β warm-up and dead-code recovery. Third, exploration: building the latent walk to see what the model had actually learned.
 
-The dataset of p5.js animations is included in `data/`. No pretrained weights are included, so you train your own.
+- **Watch the vocabulary, not just the loss.** Perplexity tells you directly whether the model is using its codes; ≈ 1 means collapse.
+- **Where you blend decides what you get.** Blending pre-snap descriptions (z_e) gives new forms; blending code labels is meaningless.
+- **Constraints shape the design.** Training on a laptop set the image size, the codebook size and the epoch budget. I'd rather state what those choices cost visually than hide it.
+- **Research code can be clean code.** After a refactor (typed config, safer checkpoint loading, tests), the retrained model matched the original within single-run noise.
+
+<details>
+<summary><b>🔬 Technical deep dive</b>: architecture, losses, anti-collapse mechanics, validation, references</summary>
+
+#### Architecture
+
+| Stage | Layers | Output shape |
+|---|---|---|
+| Input | 64×64 grayscale frame | `[B, 1, 64, 64]` |
+| Encoder | Conv 1→32 (k4 s2) → ReLU → Conv 32→64 (k4 s2) → ReLU → Conv 64→128 (k4 s2) → ReLU → BatchNorm → Conv 128→64 (k3 s1) | `z_e [B, 64, 8, 8]` |
+| Vector quantiser | Nearest of 128 codes (64-d) per cell, EMA updates, dead-code recovery, straight-through estimator | `z_q [B, 64, 8, 8]` + indices `[B, 8, 8]` |
+| Decoder | ConvT 64→128 (k3 s1) → ReLU → ConvT 128→64 (k4 s2) → ReLU → ConvT 64→32 (k4 s2) → ReLU → ConvT 32→1 (k4 s2) → Sigmoid | `[B, 1, 64, 64]` in [0, 1] |
+
+#### Losses and metrics
+
+- **Loss** = binary cross-entropy reconstruction loss + β × commitment loss, where the commitment loss is the MSE between the encoder output z_e and its (gradient-stopped) chosen code z_q. The codebook itself gets no gradient: it's updated by EMA, so there is no codebook loss term.
+- **Validation loss** is that same total, averaged over validation batches. Because β ramps up during the first 30 epochs, early validation losses aren't directly comparable with later ones.
+- **Perplexity** is exp(entropy) of code assignments, computed per validation batch and then averaged. It's an *effective* number of codes in use, not a count of distinct active codes. A perplexity of ≈ 85 means assignments are about as spread out as uniform use of 85 codes. (Computed over the whole validation set at once, epoch 135 gives ≈ 88.5; the per-batch average is lower because each batch sees fewer distinct codes.)
+
+#### Anti-collapse mechanics
+
+- **EMA codebook updates:** decay 0.99, ε = 1e-5 (Laplace-smoothed cluster sizes). The optimiser only updates the encoder and decoder.
+- **K-Means initialisation:** before training, the (still untrained) encoder encodes up to 25 batches of 64 training frames, giving about 100k 64-d vectors subsampled to 50k. K-Means (k = 128, 10 restarts) then sets the initial codes.
+- **β warm-up:** β rises linearly from 0.05 to 0.25 over epochs 0–30, then stays at 0.25. Keeping the commitment pressure low early on gives the encoder room to spread out before being pulled toward the codebook.
+- **Dead-code recovery (`_recover_dead_codes`):** checked on a random ~10% of training forward passes. A code counts as dead when its EMA usage falls below 1e-6. With decay 0.99, a code starting from usage 1.0 has to go unused for roughly 1,400 batches (≈ 27 epochs at 51 batches per epoch), so the reset is deliberately conservative. Each dead code is re-initialised, 50/50, either from a random encoder output in the current batch or from one of the most-used codes, plus Gaussian noise (σ = 0.02) in both cases. Its EMA statistics are reset to 10% of the mean active usage.
+- **Optimisation:** Adam, learning rate 2e-4, ReduceLROnPlateau (factor 0.5, patience 6, min 1e-6). Early stopping with patience 15 and min Δ 1e-4 on validation loss.
+
+#### Why 128 codes
+
+It's a balance. With too few codes, shapes from different animations would have to share codes and blur together. With too many, each code gets trained so rarely that many die off, which is the collapse problem again. 128 is the size I trained and documented. At epoch 135 every one of the 128 codes was in use on the validation set (perplexity ≈ 85), so the vocabulary was neither starved nor wasted.
+<!-- TODO(Niklaz): did you actually train 32 or 512+ codebooks? If yes, add one line with what happened (that turns this paragraph from reasoning into evidence). If not, leave the paragraph as reasoning. -->
+
+#### Latent walk method
+
+`latent_walk.py` encodes two frames to z_e (`[1, 64, 8, 8]`), linearly interpolates `(1 − α)·z_e_A + α·z_e_B` over N steps, quantises each blend to its nearest codes and decodes it. Interpolating code *indices* isn't meaningful, because indices are categorical labels with no order. Interpolating the quantised vectors z_q would also be possible; blending z_e and re-quantising lets each cell switch codes at its own moment.
+
+#### Refactor check
+
+After a refactor (type hints, dataclass config, `weights_only=True` checkpoint loading, and a test suite), I retrained and compared the result against the original implementation. Both rows are **reported from the documented Apple Silicon training runs**, and each is a single run:
+
+| Version | Best val loss | Epochs | Val perplexity | Notes |
+|---------|----------|--------|------------|-------|
+| **Refactored** | 0.0490 (epoch 121) | 137 (early stop at epoch 136) | ≈ 87 at best, ≈ 85 at stop | Type hints, tests, safer checkpoint loading |
+| **Original** | 0.0486 (epoch 191) | 200 | ≈ 92 | Pre-refactor baseline |
+
+**Result:** the refactored code reached a comparable best validation loss (0.8% higher) and stopped early after 137 epochs instead of running all 200. One run per version isn't enough to tell whether the small differences in loss and perplexity are meaningful. The comparison shows no evidence of a regression, but it doesn't prove equivalence.
+
+The test suite (`tests/test_basic.py`) consists of 5 fast tests on random inputs. They check tensor shapes through the encoder, decoder and full model, the encode→decode index roundtrip, and that reconstructions stay in [0, 1]. They don't test training dynamics, EMA updates or dead-code recovery.
+
+#### A note on scope and hardware
+
+This project was deliberately sized for local training on a MacBook Pro via MPS (Metal Performance Shaders). The dataset (1,800 frames), model size (128 codes, 64-d), and training budget (up to 200 epochs) were all chosen to fit within that constraint. The techniques used (EMA updates, K-Means seeding, β warm-up, dead-code recovery, continuous-space interpolation) are standard in larger VQ-VAE work too. How well these specific settings transfer to bigger datasets and codebooks hasn't been tested here.
+
+#### Background
+
+I came to this from studying machine learning and deep learning through MIT OpenCourseWare and IBM's AI programme. I wanted to move from theory to an implementation of my own, trained on my own work.
+<!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series) and update the sentence above. -->
+
+#### References
+
+- van den Oord, Vinyals, Kavukcuoglu (2017). *Neural Discrete Representation Learning* (VQ-VAE, including EMA codebook updates). [arXiv:1711.00937](https://arxiv.org/abs/1711.00937)
+- Łańcucki et al. (2020). *Robust Training of Vector Quantized Bottleneck Models* (K-Means initialisation and codebook resets). [arXiv:2005.08520](https://arxiv.org/abs/2005.08520)
+- Dhariwal et al. (2020). *Jukebox: A Generative Model for Music* (random restarts for unused codes). [arXiv:2005.00341](https://arxiv.org/abs/2005.00341)
+
+</details>
+
+## 🚀 Run it yourself
+
+The dataset of p5.js animation frames is included in `data/`. No pretrained weights are included, so you train your own.
 
 ### 1. Install dependencies
 
@@ -192,70 +267,41 @@ python start_training.py
 * **Codebook usage:** `outputs/logs/codebook_usage_epoch_XXXX.png`, saved every 5 epochs.
 * **Metrics:** `outputs/logs/training_log.csv`, one row per epoch.
 * **Checkpoints:** `outputs/checkpoints/vqvae_best.pth` (lowest validation loss).
-* **Training curve:** the training loop does not draw it automatically. Generate it with:
+* **Training curve:** the training loop doesn't draw it automatically. Generate it with:
   ```bash
   python -c "from utils import plot_training_curve; plot_training_curve()"
   ```
+  Note: this exits without plotting if the last five validation losses vary a lot (see Known rough edges).
 
 ### 5. Explore the latent space
 
+Requires a trained checkpoint at `outputs/checkpoints/vqvae_best.pth`. Frames are numbered from `0001` to `0180` per animation; frame `0001` of most loops is nearly empty, so pick a frame from the middle of a loop for readable morphs.
+
 ```bash
 python latent_walk.py \
-  --frame_a data/frames_animation1/frames_animation1_frame_0001.png \
-  --frame_b data/frames_animation5/frames_animation5_frame_0090.png \
-  --steps 120 --fps 30 --output outputs/morph_anim1_to_anim5.mp4
+  --frame_a data/frames_animation2/frames_animation2_frame_0112.png \
+  --frame_b data/frames_animation7/frames_animation7_frame_0091.png \
+  --steps 120 --fps 30 --output outputs/morph_anim2_to_anim7.mp4
 
 python generate.py --num_samples 4   # random-code decoding, see Limitations
 ```
 
-Expect results *similar* to the documented run, not identical ones. See [Limitations](#️-limitations).
+Add `--save_frames` to also write every step as a PNG. Those always go to `outputs/latent_walk_frames/`, whatever `--output` is set to.
 
-## ✅ Validation
+Expect results *similar* to the documented run, not identical ones. See [Limitations](#-limitations-and-next-steps).
 
-After a refactor (type hints, dataclass config, `weights_only=True` checkpoint loading, and a test suite), I retrained and compared the result against the original implementation. Both rows are **reported from the documented Apple Silicon training runs**. Each is a single run:
+## 📂 Project structure
 
-| Version | Val Loss | Epochs | Val perplexity | Notes |
-|---------|----------|--------|------------|-------|
-| **Refactored** | 0.0490 | 136 (early stop) | ≈ 85 | With type hints, tests, security fixes |
-| **Original** | 0.0486 | 200 | ≈ 92 | Pre-refactoring baseline |
-
-**Result:** the refactored code reached a comparable validation loss (0.8% higher) and stopped early after 136 epochs instead of running all 200. One run per version is not enough to tell whether the small differences in loss and perplexity are meaningful. The comparison shows no evidence of a regression, but it does not prove equivalence.
-
-The test suite (`tests/test_basic.py`) consists of 5 fast tests on random inputs. They check tensor shapes through the encoder, decoder and full model, the encode→decode index roundtrip, and that reconstructions stay in [0, 1]. They do not test training dynamics, EMA updates or dead-code recovery.
-
-## ⚠️ Limitations
-
-- **Reconstruction and interpolation, not generation of new animations.** No temporal prior (e.g. a Transformer over code sequences) is trained. The model therefore cannot autonomously generate coherent new animations over time. It reconstructs frames and creates interpolation-based morphs between frames in its learned image-latent space. `generate.py` decodes *random* code grids, which yields single images without temporal coherence.
-- **Frame model, not a video model.** Every frame is encoded independently as a 64×64 grayscale image. Motion is only implicit in the frame order.
-- **Small, curated dataset.** 1,800 frames from 10 animations by one author, with a random frame-level train/validation split. Validation frames therefore come from the same loops as training frames, so the validation loss measures reconstruction of held-out frames of *known* animations, not generalisation to new ones.
-- **No pretrained weights** are included. Reproducing the results requires training locally.
-- **Reproducibility is approximate.** Seeds are fixed, but MPS/GPU kernels are not bit-for-bit deterministic. Results may vary across runs, hardware, and PyTorch versions.
-- **Training logs from the documented runs are not committed.** The reported metrics cannot be re-derived from this repository without retraining.
-
-## 🛠 Technical Stack
-
-* **Logic:** Python 3.10+, PyTorch (trained on MacBook Pro / MPS)
-* **Creative Source:** p5.js (Custom-made loops)
-* **Research Partner:** Gemini 2.5 Flash
-* **Analysis:** NumPy, scikit-learn (K-Means codebook initialization)
-* **Media:** imageio + imageio-ffmpeg (latent-walk video export)
-* **Testing:** pytest (5 shape and range tests)
-
-## 💡 What I Learned
-
-This project progressed through three distinct phases, each building on the last:
-
-**Phase 1: Data Collection** — I generated 1,800 frames from 10 custom p5.js animations and built a data pipeline to ingest, normalize, and serve them as grayscale tensors to PyTorch. This phase established the foundation: a clean, reproducible dataset of algorithmic motion.
-
-**Phase 2: Model Development & Training** — The core engineering challenge. I confronted codebook collapse head-on—initial training produced entirely black outputs with <1% codebook utilization. Solving it required implementing EMA codebook updates, a beta-warmup schedule that ramps commitment loss from 0.05 to 0.25 over 30 epochs, and custom dead code recovery logic that monitors and resuscitates unused vectors. The result: a validation perplexity of ≈ 85–92 of 128 codes in the documented runs, and reconstructions that closely match the source geometry.
-
-**Phase 3: Latent Space Exploration** — Qualitative evidence that the model learned structure, not just individual frames. I built a latent walk system that interpolates between frames in the continuous pre-quantization space (z_e), producing smooth morphs through geometrically plausible intermediate forms that never existed in the training data. The walks showed no dead zones or blank frames, which is consistent with the codebook usage measured during training and suggests the encoder and decoder learned complementary representations.
-
-The refactoring process taught me that **code quality and research experimentation aren't mutually exclusive**. An experimental ML implementation can also have typed configuration, safer checkpoint loading, and tests.
-
-### A Note on Scope and Hardware
-
-This project was deliberately dimensioned for local training on a MacBook Pro via MPS (Metal Performance Shaders). The dataset (1,800 frames), model size (128 codebook vectors, 64-dim embeddings), and training budget (up to 200 epochs) were all chosen to fit within that constraint. The techniques used (EMA updates, beta warm-up, dead-code recovery, continuous-space interpolation) are standard in larger VQ-VAE work too. How well these specific settings transfer to bigger datasets and codebooks has not been tested here.
+* `config.py`: all settings in one place: image size, codebook size, learning rate, β schedule, anti-collapse parameters.
+* `models/vqvae_model.py`: encoder, vector quantiser (one code per cell of the 8×8 grid; EMA updates, K-Means init, dead-code recovery, perplexity) and decoder.
+* `train_vqvae.py`: training loop with β warm-up, LR scheduling, early stopping and checkpoints.
+* `start_training.py`: entry point. It loads the data, splits train/validation and starts training (no command-line arguments).
+* `dataset_loader.py`: loads the exported p5.js PNG frames and converts them to 64×64 grayscale tensors.
+* `utils.py`: checkpoint lookup, reconstruction previews, codebook-usage chart, training-curve plot.
+* `latent_walk.py`: morph tool that blends two frames' encodings and writes an MP4.
+* `generate.py`: decodes *random* code grids into single images (a proof of concept; see Limitations).
+* `visualizations.py`: placeholder for future plots.
+* `tests/test_basic.py`: shape and range tests.
 
 ## 📄 License
 

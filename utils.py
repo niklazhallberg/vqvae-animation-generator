@@ -1,5 +1,3 @@
-# --- START OF FILE utils.py (KOMPLETT MED get_latest_checkpoint) ---
-
 import sys
 from pathlib import Path
 from typing import Optional
@@ -268,5 +266,3 @@ def plot_training_curve(
     except Exception as e:
         print(f"❌ Plot error: {e}")
 
-
-# --- END OF FILE utils.py ---

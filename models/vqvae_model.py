@@ -1,5 +1,3 @@
-# --- START OF FILE models/vqvae_model.py (med EMA, KMeans, Perplexity och Korrekt Indentering) ---
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,7 +5,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 
 # =====================================================
-# 🧱 ENCODER – (Från din "gamla" fungerande version)
+# 🧱 ENCODER
 # =====================================================
 class Encoder(nn.Module):
     """Konvolutionell encoder som mappar bilder till latenta representationer.
@@ -255,7 +253,7 @@ class VectorQuantizer(nn.Module):
         return z_q_ste, encoding_indices_reshaped, codebook_loss_log, commitment_loss
 
 # =====================================================
-# 🧱 DECODER – (Från din "gamla" fungerande version)
+# 🧱 DECODER
 # =====================================================
 class Decoder(nn.Module):
     """Transponerad konvolutionell decoder som återskapar bilder från latenta representationer.
@@ -399,5 +397,3 @@ class VQVAE(nn.Module):
         z_q_reshaped = z_q_flat.view(b, h, w, self.embedding_dim)
         z_q = z_q_reshaped.permute(0, 3, 1, 2).contiguous()
         return self.decoder(z_q)
-
-# --- END OF FILE models/vqvae_model.py ---

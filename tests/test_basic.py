@@ -1,5 +1,3 @@
-# --- START OF FILE tests/test_basic.py ---
-
 """Grundläggande tester för VQ-VAE-modellen."""
 
 import torch
@@ -94,5 +92,3 @@ class TestVQVAERoundtrip:
         assert recon.min() >= 0.0
         assert recon.max() <= 1.0
 
-
-# --- END OF FILE tests/test_basic.py ---

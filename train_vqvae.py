@@ -1,5 +1,3 @@
-# --- START OF FILE train_vqvae.py (KORRIGERAD FÖR model.quantizer) ---
-
 from pathlib import Path
 
 import torch
@@ -8,14 +6,11 @@ from torch.utils.data import DataLoader
 import time
 from tqdm import tqdm
 
-# Importera från dina andra moduler
-# Viktigt: Detta antar att VQVAE-klassen finns i models/vqvae_model.py
-# och att VectorQuantizer-klassen inuti den har ett attribut .perplexity
 from models.vqvae_model import VQVAE
 from utils import (
     save_frame_examples,
     save_codebook_usage_plot,
-    get_latest_checkpoint # Antag att denna finns i utils.py
+    get_latest_checkpoint
 )
 
 
@@ -93,7 +88,7 @@ def train_vqvae(
     # Skapa parametergrupper: en för kodboken (som INTE optimeras), en för resten.
     encoder_decoder_params = [
         param for name, param in model.named_parameters()
-        if 'quantizer.embedding' not in name # <<< Använder model.quantizer här
+        if 'quantizer.embedding' not in name
     ]
 
     # Optimera endast encoder/decoder
@@ -145,7 +140,6 @@ def train_vqvae(
     # --- K-Means Initiering ---
 
     if not loaded_checkpoint_path or force_kmeans_init:
-        # <<< Använd model.quantizer istället för model.get_quantizer() >>>
         if hasattr(model.quantizer, 'kmeans_init'):
             if force_kmeans_init:
                 print("Tvingar K-Means initiering...")
@@ -161,7 +155,6 @@ def train_vqvae(
                     shuffle=False,
                     num_workers=train_loader.num_workers
                 )
-                # <<< Använd model.quantizer och model.encoder >>>
                 model.quantizer.kmeans_init(kmeans_init_loader, model.encoder, kmeans_device)
                 del kmeans_init_loader
             else:
@@ -217,7 +210,6 @@ def train_vqvae(
                 running_train_recon_loss += recon_loss_bce.item()
                 running_train_commit_loss += (current_beta * commitment_loss_term.item())
 
-                # <<< Hämta perplexity från model.quantizer.perplexity >>>
                 current_perplexity = model.quantizer.perplexity.item() if hasattr(model.quantizer, 'perplexity') else 0.0
                 running_train_perplexity += current_perplexity
 
@@ -258,7 +250,6 @@ def train_vqvae(
                     running_val_recon_loss += recon_loss_bce.item()
                     running_val_commit_loss += (current_beta * commitment_loss_term.item())
 
-                    # <<< Hämta perplexity från model.quantizer.perplexity >>>
                     current_perplexity = model.quantizer.perplexity.item() if hasattr(model.quantizer, 'perplexity') else 0.0
                     running_val_perplexity += current_perplexity
                     val_loop.set_postfix(loss=total_loss.item(), perp=current_perplexity)
@@ -322,7 +313,6 @@ def train_vqvae(
 
         # --- Spara Kodboksplot (vid intervall) ---
         if epoch % vis_epoch_interval == 0 and all_val_indices_flat:
-            # <<< Använd model.quantizer >>>
             if hasattr(model.quantizer, 'num_embeddings'):
                 encoding_indices_all_val_flat = torch.cat(all_val_indices_flat, dim=0)
                 actual_num_embeddings = model.quantizer.num_embeddings
@@ -368,5 +358,3 @@ def train_vqvae(
         scheduler.step(current_val_loss)
 
     print("Träning avslutad.")
-
-# --- END OF FILE train_vqvae.py ---
