@@ -24,9 +24,9 @@ def parse_args():
                        default='outputs/checkpoints/vqvae_best.pth',
                        help='Path to trained VQ-VAE checkpoint')
     parser.add_argument('--frame_a', type=str, required=True,
-                       help='Path to first frame (e.g., data/frames_animation1/frame_0000.png)')
+                       help='Path to first frame (e.g., data/frames_animation1/frames_animation1_frame_0001.png)')
     parser.add_argument('--frame_b', type=str, required=True,
-                       help='Path to second frame (e.g., data/frames_animation5/frame_0090.png)')
+                       help='Path to second frame (e.g., data/frames_animation5/frames_animation5_frame_0090.png)')
     parser.add_argument('--steps', type=int, default=60,
                        help='Number of interpolation steps (default: 60)')
     parser.add_argument('--output', type=str, default='outputs/latent_walk.mp4',
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('--fps', type=int, default=30,
                        help='Output video FPS (default: 30)')
     parser.add_argument('--save_frames', action='store_true',
-                       help='Save individual frames as images')
+                       help='Also save individual frames as PNGs (always written to outputs/latent_walk_frames/)')
     return parser.parse_args()
 
 
