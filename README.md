@@ -8,14 +8,16 @@
 
 <sub>Best checkpoint (epoch 121). 64×64 frames upscaled 4× (nearest-neighbour) with a slight contrast lift.</sub>
 
-Latent Loops is an advanced creative machine learning project, born where creative coding meets neural architectures. After many hours studying machine learning and deep learning through MIT OpenCourseWare and IBM's AI Professional programme on YouTube, I set out to challenge myself and move from theory to implementation.
-<!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series) and update the sentence above. -->
+**This is an advanced creative machine learning experiment: train a VQ-VAE on original p5.js animation frames, then explore the learned latent space through reconstructed loops and interpolated morphs.**
 
-**The goal:** to build a model from scratch that learns my own minimalistic, looping p5.js animations, as a first step toward letting an AI dream up its own algorithmic motion. That last step, generating new animations, isn't part of this repository yet.
+## Overview
 
-I wrote the network myself and trained it from zero on a MacBook, on 1,800 frames from ten of my loops. It describes every frame as an 8×8 grid of choices from a vocabulary of 128 visual words it invents itself, then redraws the frame from that description. Blend two descriptions and you get a morph instead of a crossfade: the in-between frames rebuild themselves through shapes I never drew.
+A VQ-VAE built from scratch in PyTorch that learns custom p5.js looping animations. Trained locally on Apple Silicon (MPS) with 1,800 frames across 10 animations. Overcame codebook collapse through EMA updates, beta-warmup scheduling, and dead code recovery, reaching a validation perplexity of ≈ 85–92 of 128 codes in the documented runs. The model generates smooth latent morphs between animation families — producing new frames that never existed in the training data.
 
-The hard part was getting the model to use its vocabulary at all. Early versions collapsed onto a single code and could only paint black. Fixing that is the core of the engineering story below.
+This project was born at the intersection of Creative Coding and Neural Architectures. After spending hours and hours studying Machine Learning and Deep Learning through MIT OpenCourseWare and IBM's AI Professional program on Youtube, I set out to challenge myself and move from theory to implementation.
+
+**The goal:** to build an AI model from scratch that learns my minimalistic, looping p5.js animations (included in the `data/` folder), as a first step toward letting an AI dream up its own algorithmic motion. That last step, autonomous generation of new animations, is not part of this repository (see [Limitations](#-limitations-and-next-steps)).
+<!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series). -->
 
 **Look at first:** [the morph](#morphing-between-animations) → [before / after training](#the-hard-part-getting-the-model-to-use-its-vocabulary) → [what I built vs what I used](#what-i-built-vs-what-i-used)
 
