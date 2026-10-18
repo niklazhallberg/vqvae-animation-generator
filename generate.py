@@ -1,5 +1,3 @@
-# --- START OF FILE generate.py ---
-
 # ======================================================
 # 🌀 GENERATE – Skapa AI-genererade bilder (Looping kräver separat Prior-modell)
 # ======================================================
@@ -108,5 +106,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
-# --- END OF FILE generate.py ---

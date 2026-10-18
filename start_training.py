@@ -1,5 +1,3 @@
-# --- START OF FILE start_training.py (Anpassad för Config-integration) ---
-
 import torch
 import numpy as np
 import random
@@ -8,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 from models.vqvae_model import VQVAE
 from train_vqvae import train_vqvae
 from dataset_loader import load_dataset
-from config import Config  # <--- HÄR IMPORTERAS DEN NYA KONFIGURATIONEN
+from config import Config
 
 # =======================
 # ✨ GLOBAL SEEDING
