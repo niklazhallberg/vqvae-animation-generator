@@ -1,13 +1,6 @@
 # Latent Loops
 ### A VQ-VAE I built in PyTorch to learn my p5.js animations and morph between them
 
-<p align="center">
-  <img src="Images/hero-original-recon-morph.gif" width="75%"
-       alt="Left: one of my p5.js loops at the model's 64×64 input size. Middle: the trained model redrawing it. Right: the model morphing that loop into a different one and back.">
-</p>
-
-<sub>Best checkpoint (epoch 121). 64×64 frames upscaled 4× (nearest-neighbour) with a slight contrast lift.</sub>
-
 **This is an advanced creative machine learning experiment: train a VQ-VAE on original p5.js animation frames, then explore the learned latent space through reconstructed loops and interpolated morphs.**
 
 ## Overview
@@ -35,13 +28,7 @@ I made these ten loops in p5.js as the training data for the model: layered hair
 
 <sub>All ten loops (1024×1024 originals, shown downscaled), each playing its full 180 frames.</sub>
 
-The model never sees pixels the way a crossfade does. It sees each frame as 64 cells, and each cell is labelled with one **code** (a visual word) from a learned **codebook** (the vocabulary). To morph, I blend the model's internal descriptions of two frames and let it redraw every step. The difference from a plain opacity crossfade between the same two frames is easy to see:
-
-<p align="center">
-  <img src="Images/crossfade-vs-morph.gif" width="70%" alt="Left: a plain opacity crossfade between two frames, showing a double exposure. Right: the model morph between the same frames, where the shape rebuilds itself.">
-</p>
-
-<sub>Loop 2 frame 112 → loop 7 frame 91. Left: pixel crossfade (double exposure). Right: model morph.</sub>
+The model never sees pixels the way a crossfade does. It sees each frame as 64 cells, and each cell is labelled with one **code** (a visual word) from a learned **codebook** (the vocabulary). To morph, I blend the model's internal descriptions of two frames and let it redraw every step. The result is different from a plain opacity crossfade; you can compare the two side by side under [Results](#results-at-a-glance).
 
 ## 🧠 Why a VQ-VAE (and not a plain VAE)
 
@@ -111,7 +98,7 @@ Reconstruction quality shows that the model can compress and restore frames. It 
 
 The trick is *where* the blend happens. Code numbers are just labels: averaging code #12 and code #87 is as meaningless as averaging the page numbers of two words in a dictionary. So I blend the encoder's continuous, pre-snap descriptions of the two frames (z_e) and let the quantiser snap each blended cell to its nearest code. As the blend moves, individual cells switch codes at different moments, sometimes through codes that belong to neither frame. That's why the shape rebuilds itself instead of crossfading.
 
-In the hero morph above, the three-lobed outline of loop 2 contracts toward a ring before opening into the rounded square of loop 7. The model decodes every in-between frame, and none of them is in the training data. These are blends between two real frames, not freely generated animation (see [Limitations](#-limitations-and-next-steps)).
+In the morph shown under [Results](#results-at-a-glance) below, the three-lobed outline of loop 2 contracts toward a ring before opening into the rounded square of loop 7. The model decodes every in-between frame, and none of them is in the training data. These are blends between two real frames, not freely generated animation (see [Limitations](#-limitations-and-next-steps)).
 
 The repo also includes an earlier [latent walk demo](Images/morph_anim1_to_anim5.mp4) from loop 1 to loop 5: 120 frames at 64×64, 30 fps.
 <!-- TODO(Niklaz): describe what morph_anim1_to_anim5.mp4 actually shows (the audit read it as a faint three-lobed outline opening into a ring), and which run/checkpoint produced it. Neither best checkpoint in outputs/ (refactored epoch 121, original epoch 191) reproduces it exactly when re-rendered through the same libx264 export (pixel correlation ≈ 0.64), so it likely comes from an earlier checkpoint. -->
@@ -125,6 +112,19 @@ What the walks suggest, qualitatively and not as proof of semantic understanding
 
 ## Results at a glance
 
+<p align="center">
+  <img src="Images/hero-original-recon-morph.gif" width="60%"
+       alt="Left: one of my p5.js loops at the model's 64×64 input size. Middle: the trained model redrawing it. Right: the model morphing that loop into a different one and back.">
+</p>
+
+<sub>Loop 2: original 64×64 input, model reconstruction, and morph into loop 7 and back. Best checkpoint (epoch 121), upscaled 4×.</sub>
+
+<p align="center">
+  <img src="Images/crossfade-vs-morph.gif" width="50%" alt="Left: a plain opacity crossfade between two frames, showing a double exposure. Right: the model morph between the same frames, where the shape rebuilds itself.">
+</p>
+
+<sub>Loop 2 frame 112 → loop 7 frame 91. Left: pixel crossfade (double exposure). Right: model morph.</sub>
+
 | | |
 |---|---|
 | **Dataset** | 1,800 frames: 10 original p5.js loops × 180 frames. Source PNGs are 1024×1024 RGBA, resized to **64×64 grayscale**. 90/10 train/validation split (1,620 / 180 frames), seed 42 |
@@ -133,7 +133,7 @@ What the walks suggest, qualitatively and not as proof of semantic understanding
 | **Training environment** | MacBook Pro, Apple Silicon (MPS), roughly 20 s per epoch (≈ 45 min for this run, estimated) |
 | **Visual evidence** | Reconstructions at epoch 0 and 135, codebook usage at epoch 135, training progression, morphs: all in [`Images/`](Images/) |
 
-All metrics are **reported from the documented Apple Silicon training runs** and weren't re-measured for this README. The training logs aren't committed (`outputs/` is git-ignored), so the numbers can't be re-derived from this repository without retraining. The morph and hero GIFs use the best checkpoint (epoch 121); the epoch-135 images show the last saved visualisation before the stop.
+All metrics are **reported from the documented Apple Silicon training runs** and weren't re-measured for this README. The training logs aren't committed (`outputs/` is git-ignored), so the numbers can't be re-derived from this repository without retraining. The reconstruction and morph GIFs above use the best checkpoint (epoch 121); the epoch-135 images show the last saved visualisation before the stop.
 
 ## What I built vs what I used
 
