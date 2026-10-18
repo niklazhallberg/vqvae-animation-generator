@@ -31,7 +31,17 @@ To capture the logic of a p5.js loop, I had to choose the right architecture.
 
 1. **VAE (Variational Autoencoder):** VAEs learn smooth, continuous representations. While great for organic shapes, they tend to produce blurry results when faced with the sharp lines and precise geometry of a p5.js script.
 
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="Images/vae-dark.png">
+     <img alt="VAE: encoder → continuous latent space → decoder, producing a blurry output frame" src="Images/vae-light.png" width="100%">
+   </picture>
+
 2. **VQ-VAE (Vector Quantized VAE):** Instead of blurry shades, the model must choose from a specific "Codebook" of learned tiles. This discretization pushes the model toward sharp, precise decisions that suit the crisp, digital nature of the original code.
+
+   <picture>
+     <source media="(prefers-color-scheme: dark)" srcset="Images/vqvae-dark.png">
+     <img alt="VQ-VAE: encoder → codebook → tokens → decoder, producing a crisp output frame" src="Images/vqvae-light.png" width="100%">
+   </picture>
 
 ## 🛡️ Overcoming Codebook Collapse
 
