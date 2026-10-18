@@ -1,7 +1,7 @@
 # VQ-VAE Animation Generator - Claude Instructions
 
 ## Project Overview
-This is a PyTorch VQ-VAE project for generating looping animations. Swedish comments are INTENTIONAL and part of the author's personal style.
+This is a PyTorch VQ-VAE project that learns the author's p5.js animation frames, reconstructs them, and morphs between them by latent interpolation. It does not generate new animations (no prior model is trained). Swedish comments are INTENTIONAL and part of the author's personal style.
 
 ## Critical Constraints
 ⚠️ **NEVER MODIFY** without explicit approval:
@@ -11,7 +11,7 @@ This is a PyTorch VQ-VAE project for generating looping animations. Swedish comm
 
 ## Code Style
 - Swedish comments and logs are intentional - DO NOT translate to English
-- Add type hints to all functions (using Python 3.9+ syntax)
+- Add type hints to all functions (Python 3.10+ syntax, e.g. `Path | str`; the project requires Python 3.10+)
 - Add docstrings to all functions (Swedish docstrings are fine)
 - Use dataclasses for configuration (see config.py)
 - Use Path objects from pathlib, not strings
