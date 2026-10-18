@@ -2,31 +2,36 @@
 ### A VQ-VAE I built in PyTorch to learn my p5.js animations and morph between them
 
 <p align="center">
-  <img src="Images/hero-original-recon-morph.gif" width="100%"
+  <img src="Images/hero-original-recon-morph.gif" width="75%"
        alt="Left: one of my p5.js loops at the model's 64×64 input size. Middle: the trained model redrawing it. Right: the model morphing that loop into a different one and back.">
 </p>
 
-<sub>Left: loop 2 at the model's 64×64 input size. Middle: the trained model redrawing it from its code grid. Right: the model morphing loop 2 into loop 7 and back. Best checkpoint (epoch 121), upscaled 6× with nearest-neighbour, slight contrast lift.</sub>
+<sub>Best checkpoint (epoch 121). 64×64 frames upscaled 4× (nearest-neighbour) with a slight contrast lift.</sub>
 
-I make generative motion in p5.js. For this project I wrote a neural network that learns my visual language, and I trained it from zero on 1,800 frames from ten of my loops, on a MacBook. It describes every frame as an 8×8 grid of choices from a vocabulary of 128 visual words it invents itself, then redraws the frame from that description. Blend two descriptions and you get a morph instead of a crossfade: the in-between frames rebuild themselves through shapes I never drew.
+Latent Loops is an advanced creative machine learning project, born where creative coding meets neural architectures. After many hours studying machine learning and deep learning through MIT OpenCourseWare and IBM's AI Professional programme on YouTube, I set out to challenge myself and move from theory to implementation.
+<!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series) and update the sentence above. -->
+
+**The goal:** to build a model from scratch that learns my own minimalistic, looping p5.js animations, as a first step toward letting an AI dream up its own algorithmic motion. That last step, generating new animations, isn't part of this repository yet.
+
+I wrote the network myself and trained it from zero on a MacBook, on 1,800 frames from ten of my loops. It describes every frame as an 8×8 grid of choices from a vocabulary of 128 visual words it invents itself, then redraws the frame from that description. Blend two descriptions and you get a morph instead of a crossfade: the in-between frames rebuild themselves through shapes I never drew.
 
 The hard part was getting the model to use its vocabulary at all. Early versions collapsed onto a single code and could only paint black. Fixing that is the core of the engineering story below.
 
-**Look at first:** [the morph](#-morphing-between-animations) → [before / after training](#-the-hard-part-getting-the-model-to-use-its-vocabulary) → [what I built vs what I used](#-what-i-built-vs-what-i-used)
+**Look at first:** [the morph](#morphing-between-animations) → [before / after training](#the-hard-part-getting-the-model-to-use-its-vocabulary) → [what I built vs what I used](#what-i-built-vs-what-i-used)
 
 **Role:** solo, from concept to the ten animations, data pipeline, model, training, morph tool and diagrams<br>
 **Stack:** p5.js · Python · PyTorch · scikit-learn · trained locally on Apple Silicon (MPS)<br>
 **Scope:** learns and morphs between existing animations. It doesn't generate new ones yet ([why](#-limitations-and-next-steps)).
 
-## 🎨 The idea
+## The idea
 
-These are the ten loops the model learned: layered hairline strokes forming knots, rings and ribbons, white on black.
+I made these ten loops in p5.js as the training data for the model: layered hairline strokes forming knots, rings and ribbons, white on black. Each loop is **180 frames** long, which gives a dataset of **1,800 frames** in total (10 × 180).
 
 <p align="center">
   <img src="Images/source-loops.gif" width="100%" alt="A 5×2 grid of the ten original p5.js loops, each playing in full.">
 </p>
 
-<sub>All ten source loops (1024×1024 originals, shown downscaled). Each 180-frame loop plays in full, sped up.</sub>
+<sub>All ten loops (1024×1024 originals, shown downscaled), each playing its full 180 frames.</sub>
 
 The model never sees pixels the way a crossfade does. It sees each frame as 64 cells, and each cell is labelled with one **code** (a visual word) from a learned **codebook** (the vocabulary). To morph, I blend the model's internal descriptions of two frames and let it redraw every step. The difference from a plain opacity crossfade between the same two frames is easy to see:
 
@@ -34,7 +39,7 @@ The model never sees pixels the way a crossfade does. It sees each frame as 64 c
   <img src="Images/crossfade-vs-morph.gif" width="70%" alt="Left: a plain opacity crossfade between two frames, showing a double exposure. Right: the model morph between the same frames, where the shape rebuilds itself.">
 </p>
 
-<sub>Same start and end frame (loop 2 frame 112 → loop 7 frame 91). Left: pixel crossfade, a double exposure. Right: model morph, where the shape itself changes.</sub>
+<sub>Loop 2 frame 112 → loop 7 frame 91. Left: pixel crossfade (double exposure). Right: model morph.</sub>
 
 ## 🧠 Why a VQ-VAE (and not a plain VAE)
 
@@ -56,7 +61,7 @@ Both are **autoencoders**: networks that compress an image into a short descript
 
 The model works at 64×64 grayscale so it can train on a laptop. That size already softens my 1024 px hairlines into thin grey bands, which is why reconstructions look softer than the originals even when the shapes are right.
 
-## 🔧 The hard part: getting the model to use its vocabulary
+## The hard part: getting the model to use its vocabulary
 
 The biggest problem was **codebook collapse**: the model stopped using its vocabulary. In early runs every cell of every frame mapped to the same single code, so the decoder could only paint black. Perplexity, a measure of how many codes are effectively in use, sat at ≈ 1 of 128. These early runs happened before the fixes below; their logs aren't committed.
 
@@ -96,9 +101,9 @@ The whole progression as motion, from the original 200-epoch run (the pre-refact
 
 ![Codebook usage at epoch 135](Images/codebook-usage-epoch-135.png)
 
-<sub>Codebook usage on the validation set at epoch 135 (refactored run). **How to read it:** one bar per code. A broad, uneven field of bars means the vocabulary is in use, while collapse would be one tall spike and 127 empty slots. All 128 codes appear here; the busiest is used about 87× as often as the rarest.</sub>
+Codebook usage on the validation set at epoch 135 (refactored run). **How to read it:** one bar per code. A broad, uneven field of bars means the vocabulary is in use, while collapse would be one tall spike and 127 empty slots. All 128 codes appear here; the busiest is used about 87× as often as the rarest.
 
-## 🌀 Morphing between animations
+## Morphing between animations
 
 Reconstruction quality shows that the model can compress and restore frames. It says little about how its internal space is organised. To look at that, I built a **latent walk** tool that morphs between any two frames.
 
@@ -116,7 +121,7 @@ What the walks suggest, qualitatively and not as proof of semantic understanding
 - **Usable vocabulary:** the walks didn't hit large dead regions that decode to blank frames, which is consistent with the codebook chart above.
 - **Encoder and decoder fit together:** the decoder produces coherent images for blended descriptions, not only for encodings of training frames.
 
-## 📊 Results at a glance
+## Results at a glance
 
 | | |
 |---|---|
@@ -126,9 +131,9 @@ What the walks suggest, qualitatively and not as proof of semantic understanding
 | **Training environment** | MacBook Pro, Apple Silicon (MPS), roughly 20 s per epoch (≈ 45 min for this run, estimated) |
 | **Visual evidence** | Reconstructions at epoch 0 and 135, codebook usage at epoch 135, training progression, morphs: all in [`Images/`](Images/) |
 
-<sub>All metrics are **reported from the documented Apple Silicon training runs** and weren't re-measured for this README. The training logs aren't committed (`outputs/` is git-ignored), so the numbers can't be re-derived from this repository without retraining. The morph and hero GIFs use the best checkpoint (epoch 121); the epoch-135 images show the last saved visualisation before the stop.</sub>
+All metrics are **reported from the documented Apple Silicon training runs** and weren't re-measured for this README. The training logs aren't committed (`outputs/` is git-ignored), so the numbers can't be re-derived from this repository without retraining. The morph and hero GIFs use the best checkpoint (epoch 121); the epoch-135 images show the last saved visualisation before the stop.
 
-## 🧰 What I built vs what I used
+## What I built vs what I used
 
 | I built | I used (libraries and tools) |
 |---|---|
@@ -168,7 +173,7 @@ The project went through three phases. First, data: turning ten p5.js loops into
 - **Research code can be clean code.** After a refactor (typed config, safer checkpoint loading, tests), the retrained model matched the original within single-run noise.
 
 <details>
-<summary><b>🔬 Technical deep dive</b>: architecture, losses, anti-collapse mechanics, validation, references</summary>
+<summary><b>Technical deep dive</b>: architecture, losses, anti-collapse mechanics, validation, references</summary>
 
 #### Architecture
 
@@ -219,11 +224,6 @@ The test suite (`tests/test_basic.py`) consists of 5 fast tests on random inputs
 
 This project was deliberately sized for local training on a MacBook Pro via MPS (Metal Performance Shaders). The dataset (1,800 frames), model size (128 codes, 64-d), and training budget (up to 200 epochs) were all chosen to fit within that constraint. The techniques used (EMA updates, K-Means seeding, β warm-up, dead-code recovery, continuous-space interpolation) are standard in larger VQ-VAE work too. How well these specific settings transfer to bigger datasets and codebooks hasn't been tested here.
 
-#### Background
-
-I came to this from studying machine learning and deep learning through MIT OpenCourseWare and IBM's AI programme. I wanted to move from theory to an implementation of my own, trained on my own work.
-<!-- TODO(Niklaz): confirm the exact IBM programme name and platform (e.g. "IBM AI Engineering Professional Certificate" on Coursera, or a YouTube series) and update the sentence above. -->
-
 #### References
 
 - van den Oord, Vinyals, Kavukcuoglu (2017). *Neural Discrete Representation Learning* (VQ-VAE, including EMA codebook updates). [arXiv:1711.00937](https://arxiv.org/abs/1711.00937)
@@ -232,7 +232,7 @@ I came to this from studying machine learning and deep learning through MIT Open
 
 </details>
 
-## 🚀 Run it yourself
+## Run it yourself
 
 The dataset of p5.js animation frames is included in `data/`. No pretrained weights are included, so you train your own.
 
@@ -290,7 +290,7 @@ Add `--save_frames` to also write every step as a PNG. Those always go to `outpu
 
 Expect results *similar* to the documented run, not identical ones. See [Limitations](#-limitations-and-next-steps).
 
-## 📂 Project structure
+## Project structure
 
 * `config.py`: all settings in one place: image size, codebook size, learning rate, β schedule, anti-collapse parameters.
 * `models/vqvae_model.py`: encoder, vector quantiser (one code per cell of the 8×8 grid; EMA updates, K-Means init, dead-code recovery, perplexity) and decoder.
@@ -303,7 +303,7 @@ Expect results *similar* to the documented run, not identical ones. See [Limitat
 * `visualizations.py`: placeholder for future plots.
 * `tests/test_basic.py`: shape and range tests.
 
-## 📄 License
+## License
 
 - **Source code** is released under the [MIT License](LICENSE).
 - **Creative assets are not MIT-licensed.** The original p5.js animation frames in `data/`, the visual material in `Images/`, and any included example media are © Niklaz Hallberg, all rights reserved. They may not be reused, redistributed, or used for model training without written permission. See [ASSETS_LICENSE.md](ASSETS_LICENSE.md).
