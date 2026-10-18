@@ -34,6 +34,12 @@ The model never sees pixels the way a crossfade does. It sees each frame as 64 c
 
 Both are **autoencoders**: networks that compress an image into a short description and then redraw the image from that description alone.
 
+In plain terms, the three parts in the diagrams below do this:
+
+- **Encoder:** looks at a frame and boils it down to a compact description, a bit like summing up a layout in a few notes instead of sending the full file.
+- **Latent space:** the space where those descriptions live. Frames that look alike end up close together, so travelling from one point to another is what a morph is. (*z* in the diagram is one such point.)
+- **Decoder:** takes a description and redraws the full frame from it, like rebuilding the layout from those notes alone. If the notes are vague, the redraw comes out soft.
+
 1. **VAE (variational autoencoder).** A VAE describes each frame with continuous numbers. That makes blending easy, but with standard settings VAEs tend to average between plausible outputs, and on images that average looks like soft, smeared edges. My loops are built from thin overlapping strokes, so I went with the variant that has to commit. *(This rationale comes from the literature. I didn't train a VAE baseline here.)*
 
    <picture>
