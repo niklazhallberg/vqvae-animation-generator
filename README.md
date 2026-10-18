@@ -1,6 +1,6 @@
 # VQ-VAE: Creative Code & Deep Learning
 
-**A creative-ML experiment: train a VQ-VAE on original p5.js animation frames, then explore the learned latent space through reconstructed loops and interpolated morphs.**
+**This is an advanced creative machine learning experiment: train a VQ-VAE on original p5.js animation frames, then explore the learned latent space through reconstructed loops and interpolated morphs.**
 
 ## Overview
 
